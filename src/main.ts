@@ -911,7 +911,7 @@ function loadState(): State {
   const state: State = {
     ships: DEFAULT_SHIPS.map((s) => ({ ...s })),
     merged: new Array<boolean>(DEFAULT_SHIPS.length - 1).fill(false),
-    limit: 20,
+    limit: 10,
   };
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
