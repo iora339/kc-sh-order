@@ -110,9 +110,20 @@ header .sub {
 }
 
 footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 16px;
   margin-top: 20px;
   padding-top: 10px;
   border-top: 1px solid var(--line);
+}
+
+/* GitHub へのリンクは右下に寄せる */
+.footer-repo {
+  margin-left: auto;
+  white-space: nowrap;
 }
 
 footer p {
