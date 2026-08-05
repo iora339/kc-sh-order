@@ -1,0 +1,548 @@
+:root {
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --fg: #1b1f24;
+  --muted: #667085;
+  --line: #dfe3e8;
+  --accent: #2f6fd0;
+  --accent-soft: #e8f0fd;
+  --warn-bg: #fdecec;
+  --warn-fg: #a33;
+  --row-hover: #eef2f7;
+  --row-hover-grouped: #dbe8fb;
+  /* 艦名メモの幅: 全角4文字(本文 14px)+ 入力欄の padding 14px と border 2px */
+  --name-col: calc(4 * 14px + 16px);
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14171c;
+    --panel: #1c2027;
+    --fg: #e6e9ee;
+    --muted: #97a0ae;
+    --line: #2c323b;
+    --accent: #6ea8fe;
+    --accent-soft: #22304a;
+    --warn-bg: #3a2222;
+    --warn-fg: #ff9d9d;
+    --row-hover: #232833;
+    --row-hover-grouped: #2b3a55;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* display 指定を持つ要素にも hidden を効かせる */
+[hidden] {
+  display: none !important;
+}
+
+body {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "Segoe UI", "Yu Gothic UI", "Hiragino Kaku Gothic ProN", sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+h1 {
+  font-size: 20px;
+  margin: 0 0 4px;
+}
+
+h2 {
+  font-size: 15px;
+  margin: 0 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* 見出しと右上のコントロールを同じ行に並べる */
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.panel-head h2 {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.limit-ctl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.limit-ctl select {
+  width: auto;
+}
+
+.verify-ctl {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+header .sub {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+footer {
+  margin-top: 20px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+footer p {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+footer p:last-child {
+  margin-bottom: 0;
+}
+
+footer a {
+  color: inherit;
+}
+
+main {
+  display: grid;
+  grid-template-columns: minmax(0, 552px) 1fr;
+  gap: 16px;
+  margin-top: 16px;
+  align-items: start;
+}
+
+/* 1080px までは2列を保つ。右の候補テーブルは幅が足りなければ枠内で横スクロールする */
+@media (max-width: 1079px) {
+  main {
+    grid-template-columns: 1fr;
+  }
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 8px 0 0;
+}
+
+/* 操作できる領域だと分かるように枠で囲う */
+.order-area {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 4px;
+}
+
+.ship-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* 行と行の間の区切り。押すと順不同グループにまとまる */
+.divider {
+  height: 16px;
+  padding: 0;
+  border: 0;
+  background: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 押せることが分かるよう、文字は常に薄く出しておく */
+  color: var(--muted);
+  opacity: 0.6;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.divider span {
+  padding: 0 6px;
+  white-space: nowrap;
+}
+
+.divider:hover {
+  color: var(--accent);
+  opacity: 1;
+}
+
+.divider:hover::before,
+.divider:hover::after {
+  background: var(--accent);
+}
+
+.divider.merged {
+  color: var(--accent);
+  opacity: 1;
+}
+
+.divider.merged::before,
+.divider.merged::after {
+  background: var(--accent);
+  opacity: 0.5;
+}
+
+/* 順不同グループに属する行 */
+.ship-row.grouped {
+  background: var(--accent-soft);
+  border-left-color: var(--accent);
+}
+
+.ship-row.group-head {
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+.ship-row.group-tail {
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+}
+
+.ship-row,
+.ship-head {
+  display: grid;
+  grid-template-columns: 44px var(--name-col) 76px 62px 100px 62px 22px 22px 22px;
+  gap: 3px;
+  align-items: center;
+  border-left: 3px solid transparent;
+  border-radius: 4px;
+  padding: 2px 2px 2px 4px;
+}
+
+/* 入力欄の見出し */
+.ship-head {
+  color: var(--muted);
+  font-size: 11px;
+  padding-bottom: 4px;
+}
+
+.ship-row {
+  transition: transform 120ms ease;
+}
+
+/* 長押しで持ち上げている行 */
+.ship-row.lift {
+  position: relative;
+  z-index: 5;
+  transition: none;
+  background: var(--panel);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 28%);
+  cursor: grabbing;
+}
+
+body.dragging {
+  user-select: none;
+  cursor: grabbing;
+}
+
+.ship-row select {
+  font-size: 12px;
+  padding: 5px 2px;
+}
+
+/* グループの2隻目以降: 優先度はグループ先頭に従う */
+.ship-row .ditto {
+  color: var(--muted);
+  text-align: center;
+  font-size: 12px;
+  cursor: default;
+}
+
+.ship-row .rank {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  /* タッチでもここを掴めば並べ替えできるように、スクロール操作を奪う */
+  touch-action: none;
+  cursor: grab;
+}
+
+/* 掴める場所の目印。常に見えるが主張はしない */
+.drag-handle {
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0.45;
+}
+
+.ship-row:hover .drag-handle {
+  opacity: 1;
+  color: var(--accent);
+}
+
+.ship-row.lift .rank {
+  cursor: grabbing;
+}
+
+/* 行単位で反応することを示す */
+.ship-row:hover {
+  background: var(--row-hover);
+}
+
+.ship-row.grouped:hover {
+  background: var(--row-hover-grouped);
+}
+
+input[type="text"],
+select {
+  width: 100%;
+  padding: 5px 7px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--panel);
+  color: var(--fg);
+  font: inherit;
+}
+
+button {
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--panel);
+  color: var(--fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+button.icon {
+  padding: 4px 0;
+  text-align: center;
+}
+
+button.ghost {
+  color: var(--muted);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.opt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-bottom: 8px;
+}
+
+.opt-label {
+  color: var(--muted);
+  font-size: 12px;
+  width: 92px;
+}
+
+.opt label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.warn {
+  white-space: pre-line;
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.summary {
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+th,
+td {
+  padding: 5px 5px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  white-space: nowrap;
+}
+
+th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+td.num,
+th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 「艦 × 砲撃順」表の 2 段見出し */
+th.span {
+  text-align: center;
+  border-bottom: 1px solid var(--line);
+}
+
+/* 順位や確率の桁数で列幅が動くと、ページを送るたびに表がずれる */
+#result th:first-child,
+#result td:first-child {
+  width: 44px;
+}
+
+#result th.num,
+#result td.num {
+  width: 64px;
+}
+
+tbody tr {
+  cursor: pointer;
+}
+
+tbody tr:hover {
+  background: var(--accent-soft);
+}
+
+tbody tr.selected {
+  background: var(--accent-soft);
+}
+
+tbody tr.best td {
+  font-weight: 700;
+}
+
+.pos {
+  color: var(--muted);
+  font-size: 11px;
+  margin-right: 2px;
+}
+
+.rng {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.page-btn {
+  min-width: 34px;
+  padding: 4px 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.page-current {
+  min-width: 56px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail {
+  margin-top: 12px;
+}
+
+.detail h3 {
+  font-size: 13px;
+  margin: 12px 0 6px;
+}
+
+.detail table {
+  max-width: 520px;
+}
+
+/* 均等度のヒート表: 1/k からの乖離が大きいほど濃く塗る */
+td.heat {
+  --heat: 0;
+  position: relative;
+}
+
+td.heat.over {
+  background: rgb(47 111 208 / calc(var(--heat) * 30%));
+}
+
+td.heat.under {
+  background: rgb(208 90 47 / calc(var(--heat) * 30%));
+}
+
+td.heat.zero {
+  color: var(--muted);
+  opacity: 0.5;
+}
+
+/* 砲撃に参加しない艦の行 */
+tr.no-shell td {
+  color: var(--muted);
+}

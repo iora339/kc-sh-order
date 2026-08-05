@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>艦これ　砲撃順シミュレータ</title>
+  </head>
+  <body>
+    <header>
+      <h1>艦これ　砲撃順シミュレータ</h1>
+      <p class="sub">
+        射程と希望の砲撃順から、砲撃戦1巡目がなるべく希望どおりになる艦の並び順を探します。
+      </p>
+    </header>
+
+    <main>
+      <div class="col">
+        <section class="panel">
+          <div class="panel-head">
+            <h2 id="order-title">希望の砲撃順</h2>
+            <label class="verify-ctl">
+              <input id="verify" type="checkbox" autocomplete="off" />
+              編成を指定して砲撃順を確認
+            </label>
+          </div>
+          <div class="order-area">
+            <div class="ship-head" id="ship-head">
+              <span>希望順</span>
+              <span>艦名メモ</span>
+              <span>射程</span>
+              <span>砲撃戦参加</span>
+              <span>位置指定</span>
+              <span>優先度</span>
+            </div>
+            <div id="ship-list" class="ship-list"></div>
+          </div>
+          <div class="actions">
+            <button id="add-ship" type="button">艦を追加</button>
+            <button id="reset" type="button" class="ghost">初期状態に戻す</button>
+          </div>
+          <div id="warn" class="warn" hidden></div>
+          <div id="wish-hints">
+            <p class="hint">
+              砲撃戦で行動して欲しい順に並べてください。行を長押しして動かすか、↑↓で並べ替えられます。同じ確率になる場合、上記で指定した並び順を優先して候補に表示します。連合艦隊の場合も第一、第二それぞれでこの並び順を適用可能です。
+            </p>
+            <p class="hint">
+              行の間の「まとめる」を押すと、上下の艦が<b>順不同グループ</b>になります。
+              グループ内は順序を問わず、なるべく<b>均等</b>に撃つ並び順を探します。<br />
+              右端の<b>優先度</b>を変更すると、その希望順を優先して満たす並びが候補の上に来ます。<br />
+              砲撃戦に参加しない潜水艦や攻撃機を積んでいない空母は<b>不参加</b>にしてください(行動順に載らないので後続が繰り上がります)。
+              中破空母は手番を消費するだけで順番は変わらないため、必ず<b>参加</b>にしてください。
+            </p>
+            <p class="hint">
+              タッチなど並び順を固定したい艦は「位置指定」を設定してください。各種タッチ、警戒陣にも対応しています。<br />
+            </p>
+          </div>
+          <p class="hint" id="verify-hint" hidden>
+            実際の艦隊の並び順に並べてください。行を長押しして動かすか、↑↓で並べ替えられます。<br />
+            艦名メモ・射程・砲撃戦参加は希望の砲撃順と共有しています。
+          </p>
+        </section>
+
+      </div>
+
+      <div class="col">
+        <section class="panel">
+          <div class="panel-head">
+            <h2 id="results-title">並び順の候補</h2>
+            <label class="limit-ctl" id="limit-ctl">
+              表示件数
+              <select id="limit">
+                <option value="10">10</option>
+                <option value="20" selected>20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="5040">すべて</option>
+              </select>
+            </label>
+          </div>
+          <div id="summary" class="summary"></div>
+          <div class="table-wrap" id="result-wrap">
+            <table id="result">
+              <thead>
+                <tr id="result-head"></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div id="pager" class="pager"></div>
+          <div id="detail" class="detail"></div>
+        </section>
+      </div>
+    </main>
+
+    <footer>
+      <p>
+        砲撃順のロジックは
+        <a href="https://github.com/KC3Kai/kancolle-replay" target="_blank" rel="noopener">KC3Kai/kancolle-replay</a>
+        (MIT, Copyright (c) 2016 fourinone41)から移植しています。
+        アルゴリズムの出典は
+        <a href="https://github.com/dube116/kancolle-shelling-order" target="_blank" rel="noopener"
+          >dube116/kancolle-shelling-order</a
+        >
+        です。
+      </p>
+      <p>
+        ご意見ご要望はこちらに:
+        <a
+          href="https://marshmallow-qa.com/lmingitwavpu1ou?t=DSKH5G&amp;utm_medium=url_text&amp;utm_source=promotion"
+          target="_blank"
+          rel="noopener"
+          >マシュマロ(匿名メッセージ)</a
+        >
+      </p>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
