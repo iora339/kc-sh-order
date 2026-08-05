@@ -18,3 +18,7 @@ npm test         # テスト（vitest）
 ## デプロイ
 
 公開URL: https://iora339.github.io/kc-sh-order/
+
+## ライセンス
+
+[MIT](LICENSE)
