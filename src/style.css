@@ -278,6 +278,126 @@ main {
   opacity: 0.45;
 }
 
+/* 1行に9列は約 584px 必要。狭い画面では砲撃戦参加以降を2段目に折り返す */
+@media (max-width: 599px) {
+  .ship-row,
+  .ship-head {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    row-gap: 4px;
+    /* 希望順を置く左端をあけておく */
+    padding-left: 47px;
+  }
+
+  /* 希望順は2段にまたがるので、流れから外して行の高さいっぱいに置く */
+  .ship-row > :nth-child(1),
+  .ship-head > :nth-child(1) {
+    position: absolute;
+    left: 4px;
+    top: 0;
+    bottom: 0;
+    width: 40px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* 1段目: 艦名メモ・射程 + 並べ替えボタン */
+  .ship-row > :nth-child(2),
+  .ship-head > :nth-child(2) {
+    order: 1;
+    flex: 1 1 60px;
+  }
+
+  .ship-row > :nth-child(3),
+  .ship-head > :nth-child(3) {
+    order: 1;
+    width: 76px;
+  }
+
+  .ship-row > :nth-child(n + 7) {
+    order: 2;
+    width: 22px;
+  }
+
+  /* 見出しにはボタンが無いので、同じ幅を空けて1段目の列を揃える */
+  .ship-head::after {
+    content: '';
+    order: 2;
+    width: 72px;
+  }
+
+  /* 幅いっぱいのダミーで確実に改行させる */
+  .ship-row::before,
+  .ship-head::before {
+    content: '';
+    order: 3;
+    width: 100%;
+    height: 0;
+  }
+
+  /* 2段目: 砲撃戦参加・位置指定・優先度 */
+  .ship-row > :nth-child(4),
+  .ship-head > :nth-child(4) {
+    order: 4;
+    width: 62px;
+  }
+
+  .ship-row > :nth-child(5),
+  .ship-head > :nth-child(5) {
+    order: 4;
+    flex: 1 1 100px;
+  }
+
+  .ship-row > :nth-child(6),
+  .ship-head > :nth-child(6) {
+    order: 4;
+    width: 62px;
+  }
+}
+
+/* 360px 級より狭い端末では余白と固定幅を詰めて、2段のままにする */
+@media (max-width: 379px) {
+  body {
+    padding: 12px;
+  }
+
+  .panel {
+    padding: 8px;
+  }
+
+  .ship-row,
+  .ship-head {
+    padding-left: 40px;
+  }
+
+  .ship-row > :nth-child(1),
+  .ship-head > :nth-child(1) {
+    left: 3px;
+    width: 34px;
+  }
+
+  .ship-row > :nth-child(3),
+  .ship-head > :nth-child(3) {
+    width: 68px;
+  }
+
+  .ship-row > :nth-child(n + 7) {
+    width: 20px;
+  }
+
+  .ship-head::after {
+    width: 66px;
+  }
+
+  .ship-row > :nth-child(4),
+  .ship-head > :nth-child(4),
+  .ship-row > :nth-child(6),
+  .ship-head > :nth-child(6) {
+    width: 56px;
+  }
+}
+
 .ship-row {
   transition: transform 120ms ease;
 }
