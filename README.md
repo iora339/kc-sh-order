@@ -9,6 +9,7 @@ npm run dev      # 開発サーバ（http://localhost:5173）
 npm run build    # 型チェック + 本番ビルド（tsc --noEmit && vite build）
 npm run preview  # ビルド結果のプレビュー
 npm test         # テスト（vitest）
+npm run lint     # Lint（eslint）
 ```
 
 ## 出典
