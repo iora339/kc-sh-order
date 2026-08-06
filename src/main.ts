@@ -291,9 +291,13 @@ function renderModeLabels(): void {
   byId('wish-hints').hidden = verify;
   byId('verify-hint').hidden = !verify;
   const labels = verify
-    ? ['並び順', '艦名メモ', '射程', '砲撃戦参加', '', '']
+    ? ['並び順', '艦名メモ', '射程', '砲撃戦参加', '位置指定', '優先度']
     : ['希望順', '艦名メモ', '射程', '砲撃戦参加', '位置指定', '優先度'];
-  [...byId('ship-head').children].forEach((el, i) => (el.textContent = labels[i]));
+  // 確認モードでは位置指定・優先度は使わないので、見出しだけ薄く残す
+  [...byId('ship-head').children].forEach((el, i) => {
+    el.textContent = labels[i];
+    el.classList.toggle('off', verify && i >= 4);
+  });
 }
 
 /** 希望順の番号とドラッグハンドル。グループは先頭行にだけ「4-6.」と範囲を出す */

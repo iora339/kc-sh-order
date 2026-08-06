@@ -273,6 +273,11 @@ main {
   padding-bottom: 4px;
 }
 
+/* そのモードでは使わない列の見出し */
+.ship-head .off {
+  opacity: 0.45;
+}
+
 .ship-row {
   transition: transform 120ms ease;
 }
