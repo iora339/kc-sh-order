@@ -258,7 +258,7 @@ main {
 .ship-row,
 .ship-head {
   display: grid;
-  grid-template-columns: 44px var(--name-col) 76px 62px 100px 62px 22px 22px 22px;
+  grid-template-columns: 44px var(--name-col) 76px 62px 100px 50px 22px 22px 22px;
   gap: 3px;
   align-items: center;
   border-left: 3px solid transparent;
@@ -352,7 +352,7 @@ main {
   .ship-row > :nth-child(6),
   .ship-head > :nth-child(6) {
     order: 4;
-    width: 62px;
+    width: 50px;
   }
 }
 
@@ -391,9 +391,7 @@ main {
   }
 
   .ship-row > :nth-child(4),
-  .ship-head > :nth-child(4),
-  .ship-row > :nth-child(6),
-  .ship-head > :nth-child(6) {
+  .ship-head > :nth-child(4) {
     width: 56px;
   }
 }
@@ -556,6 +554,22 @@ button.ghost {
   overflow-x: auto;
 }
 
+/* 件数が多い表は見出し + 5行ぶんに抑えて縦スクロールさせる。見出しは上に貼り付ける */
+.table-wrap.tall {
+  max-height: 188px;
+  overflow-y: auto;
+}
+
+.table-wrap.tall thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--panel);
+  /* sticky だと border-bottom が一緒に流れるので影で代用する */
+  border-bottom: 0;
+  box-shadow: inset 0 -1px 0 var(--line);
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -599,11 +613,12 @@ th.span {
   width: 64px;
 }
 
-tbody tr {
+/* 行を選べるのは候補一覧だけ。詳細の表はクリックできないので合図を出さない */
+#result tbody tr {
   cursor: pointer;
 }
 
-tbody tr:hover {
+#result tbody tr:hover {
   background: var(--accent-soft);
 }
 

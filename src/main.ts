@@ -78,9 +78,9 @@ interface State {
 }
 
 const PRIORITY_LABEL: Record<Priority, string> = {
-  top: '最優先',
+  top: '特',
   high: '高',
-  normal: '標準',
+  normal: '中',
   low: '低',
 };
 
@@ -733,7 +733,7 @@ function renderDetail(cand: Candidate | undefined, groups: number[][]): void {
   for (const el of groupEvennessTables(cand, groups)) detail.append(el);
 
   detail.append(heading('この並びで起きやすい砲撃順'));
-  detail.append(scrollable(likelyOrdersTable(dist.orders, shipOfSlot)));
+  detail.append(scrollable(likelyOrdersTable(dist.orders, shipOfSlot), true));
 }
 
 /** 並び順どおり(1番艦から)に、各艦が何番目に撃つかの確率を並べる */
@@ -790,10 +790,10 @@ function groupEvennessTables(cand: Candidate, groups: number[][]): HTMLElement[]
   return out;
 }
 
-/** 起きやすい砲撃順の上位5件 */
+/** 起こりうる砲撃順を確率の高い順に全件 */
 function likelyOrdersTable(orders: Map<string, number>, shipOfSlot: number[]): HTMLTableElement {
   const t = table(['砲撃順', '確率']);
-  for (const [orderKey, p] of [...orders].sort((a, b) => b[1] - a[1]).slice(0, 5)) {
+  for (const [orderKey, p] of [...orders].sort((a, b) => b[1] - a[1])) {
     const names = orderKey
       .split(',')
       .map((slot) => state.ships[shipOfSlot[Number(slot)]].name)
@@ -827,10 +827,10 @@ function table(headers: string[]): HTMLTableElement {
   return t;
 }
 
-/** 幅が足りないときに枠内で横スクロールさせる */
-function scrollable(table: HTMLTableElement): HTMLDivElement {
+/** 幅が足りないときに枠内で横スクロールさせる。tall なら高さも抑えて縦にもスクロールさせる */
+function scrollable(table: HTMLTableElement, tall = false): HTMLDivElement {
   const wrap = document.createElement('div');
-  wrap.className = 'table-wrap';
+  wrap.className = tall ? 'table-wrap tall' : 'table-wrap';
   wrap.append(table);
   return wrap;
 }
