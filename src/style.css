@@ -63,12 +63,14 @@ h2 {
   border-bottom: 1px solid var(--line);
 }
 
-/* 見出しと右上のコントロールを同じ行に並べる */
+/* 見出しと右上のコントロールを同じ行に並べる。
+   入りきらない幅では見出しを削らず、コントロールを次の行に落とす */
 .panel-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 6px 12px;
   margin-bottom: 10px;
   padding-bottom: 6px;
   border-bottom: 1px solid var(--line);
@@ -78,29 +80,55 @@ h2 {
   margin: 0;
   padding: 0;
   border: 0;
+  /* 縮めて2行にするくらいなら、右のコントロールを折り返させる */
+  flex: 0 0 auto;
+}
+
+/* 見出しの右に並ぶコントロール。折り返して単独の行になっても右端に置く */
+.limit-ctl,
+.verify-ctl {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .limit-ctl {
-  display: flex;
-  align-items: center;
   gap: 6px;
   color: var(--muted);
-  font-size: 12px;
-  white-space: nowrap;
 }
 
 .limit-ctl select {
   width: auto;
 }
 
+/* 見出しの添え物ではなく切り替えスイッチだと分かるよう、枠で囲って独立させる */
 .verify-ctl {
-  display: flex;
-  align-items: center;
   gap: 5px;
-  color: var(--muted);
-  font-size: 12px;
-  white-space: nowrap;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  /* 狭い画面で見出しを2行に折り返させないよう、余白は最小限にする */
+  padding: 3px 8px 3px 6px;
+  color: var(--fg);
   cursor: pointer;
+}
+
+/* チェック印もツールのアクセント色に合わせる(既定はブラウザ既定の青) */
+.verify-ctl input {
+  accent-color: var(--accent);
+}
+
+.verify-ctl:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* チェック中は本体の色を入れて、今どちらのモードかを一目で分かるようにする */
+.verify-ctl:has(:checked) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 header .sub {
@@ -175,6 +203,15 @@ main {
   margin: 8px 0 0;
 }
 
+/* 見落とされやすい別モードの案内。薄い青は他の意味で使い切っているので、
+   線と文字色だけで差をつける */
+.hint.callout {
+  color: var(--fg);
+  border-left: 3px solid var(--accent);
+  padding-left: 9px;
+  margin-top: 10px;
+}
+
 /* 操作できる領域だと分かるように枠で囲う */
 .order-area {
   border: 1px solid var(--line);
@@ -239,22 +276,15 @@ main {
   opacity: 0.5;
 }
 
-/* 順不同グループに属する行 */
-.ship-row.grouped {
-  background: var(--accent-soft);
-  border-left-color: var(--accent);
-}
-
-.ship-row.group-head {
-  border-top-left-radius: 6px;
-  border-top-right-radius: 6px;
-}
-
-.ship-row.group-tail {
-  border-bottom-left-radius: 6px;
-  border-bottom-right-radius: 6px;
-}
-
+/*
+ * 艦1隻ぶんの行と、その見出し。列は必ず9つで、以下の nth-child 番号に対応する。
+ *
+ *   1 希望順 / 2 艦名メモ / 3 射程 / 4 砲撃戦参加 / 5 位置指定 / 6 優先度 / 7 ↑ / 8 ↓ / 9 ✕
+ *
+ * 使わない列も空の枠を置いて9つを保つ(main.ts の blankCell / dittoCell / unusedCell)。
+ * 狭い画面の2段折り返しがこの番号に依存しているので、列を増減するときは下の
+ * メディアクエリも一緒に直すこと。
+ */
 .ship-row,
 .ship-head {
   display: grid;
@@ -276,6 +306,22 @@ main {
 /* そのモードでは使わない列の見出し */
 .ship-head .off {
   opacity: 0.45;
+}
+
+/* 順不同グループに属する行。帯の上端と下端だけ角を丸める */
+.ship-row.grouped {
+  background: var(--accent-soft);
+  border-left-color: var(--accent);
+}
+
+.ship-row.group-head {
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+.ship-row.group-tail {
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
 }
 
 /* 1行に9列は約 584px 必要。狭い画面では砲撃戦参加以降を2段目に折り返す */
@@ -396,7 +442,8 @@ main {
   }
 }
 
-.ship-row {
+.ship-row,
+.divider {
   transition: transform 120ms ease;
 }
 
@@ -409,6 +456,18 @@ main {
   border-radius: 6px;
   box-shadow: 0 6px 18px rgb(0 0 0 / 28%);
   cursor: grabbing;
+}
+
+/* 順不同グループはまとめて持ち上がるので、束であることが分かる色を保つ */
+.ship-row.grouped.lift {
+  background: var(--accent-soft);
+}
+
+/* グループ内の区切りも一緒に動く。行の影の下をくぐらせる */
+.divider.lift {
+  position: relative;
+  z-index: 4;
+  transition: none;
 }
 
 body.dragging {
@@ -442,11 +501,11 @@ body.dragging {
   cursor: grab;
 }
 
-/* 掴める場所の目印。常に見えるが主張はしない */
+/* 掴める場所の目印。ホバーの無いタッチ端末でも見つかるよう、既定から少し濃くしておく */
 .drag-handle {
   font-size: 13px;
   line-height: 1;
-  opacity: 0.45;
+  opacity: 0.7;
 }
 
 .ship-row:hover .drag-handle {

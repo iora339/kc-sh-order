@@ -10,6 +10,7 @@ import {
   groupsFromMerged,
   hasPriority,
   isConstraintAvailable,
+  mergedFromGroups,
   search,
   syncGroupPriorities,
   vanguardSplit,
@@ -363,6 +364,20 @@ describe('順不同グループ', () => {
     expect(groupsFromMerged([false, false, false], 4)).toEqual([[0], [1], [2], [3]]);
     expect(groupsFromMerged([true, true, true], 4)).toEqual([[0, 1, 2, 3]]);
     expect(groupsFromMerged([false, true, false], 4)).toEqual([[0], [1, 2], [3]]);
+  });
+
+  it('mergedFromGroups が groupsFromMerged の逆になる', () => {
+    // UI はグループごと並べ替えるので、動かしたあとに区切りを組み直せる必要がある
+    for (const merged of [
+      [false, false, false],
+      [true, true, true],
+      [false, true, false],
+      [true, false, true],
+    ]) {
+      expect(mergedFromGroups(groupsFromMerged(merged, 4))).toEqual(merged);
+    }
+    // グループの並べ替えは区切りも一緒に動かす
+    expect(mergedFromGroups([[2, 3], [0], [1]])).toEqual([true, false, false]);
   });
 
   it('均等度の定義: 完全に均等なら 1、順番が固定なら 0', () => {

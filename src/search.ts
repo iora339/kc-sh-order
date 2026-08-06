@@ -138,6 +138,13 @@ export function groupsFromMerged(merged: readonly boolean[], n: number): number[
   return groups;
 }
 
+/** `groupsFromMerged` の逆。グループの並びから区切りを組み直す(中は結合・境目は分割)。見るのは隻数だけ */
+export function mergedFromGroups(groups: readonly unknown[][]): boolean[] {
+  const merged = groups.flatMap((g) => [...new Array<boolean>(g.length - 1).fill(true), false]);
+  merged.pop();
+  return merged;
+}
+
 export function hasOrderFreeGroup(groups: readonly number[][]): boolean {
   return groups.some((g) => g.length >= 2);
 }

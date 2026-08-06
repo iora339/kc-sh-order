@@ -14,6 +14,7 @@ import {
   hasOrderFreeGroup,
   hasPriority,
   makeEvaluator,
+  mergedFromGroups,
   PRIORITIES,
   search,
   syncGroupPriorities,
@@ -168,105 +169,181 @@ function refreshResults(): void {
 
 /* ---- 希望の砲撃順(入力欄)の描画 --------------------------------------- */
 
+/** 1行を組み立てるのに必要な文脈。セルを作る関数はすべてこれだけを受け取る */
+interface Row {
+  /** state.ships の添字 */
+  ship: number;
+  /** 表示上の位置。確認モードでは艦隊の並び順なので ship と一致しない */
+  pos: number;
+  /** その艦が属する順不同グループ(希望順の配列)。単艦なら要素1つ */
+  group: number[];
+  /** 並べ替えの単位になるブロックの番号と、ブロックの総数 */
+  block: number;
+  blockCount: number;
+}
+
 function renderShips(): void {
   shipList.replaceChildren();
   renderModeLabels();
 
   const groups = groupsFromMerged(state.merged, state.ships.length);
   syncGroupPriorities(state.ships, groups);
-  const groupOfRank = new Array<number[]>(state.ships.length);
+  const groupOfRank: number[][] = [];
   for (const g of groups) for (const rank of g) groupOfRank[rank] = g;
 
   // 確認モードでは「艦隊の並び順」で行を出す。希望順(state.ships の並び)は触らない
   const order = verify ? fleetOrder() : state.ships.map((_, i) => i);
 
-  order.forEach((shipIdx, i) => {
-    const ship = state.ships[shipIdx];
-    if (i > 0 && !verify) shipList.append(divider(i - 1));
+  const blocks = dragBlocks();
+  const blockOfRow: number[] = [];
+  blocks.forEach((b, bi) => b.forEach((pos) => (blockOfRow[pos] = bi)));
 
-    const row = document.createElement('div');
-    row.className = 'ship-row';
-    const g = groupOfRank[shipIdx];
-    if (!verify && g.length >= 2) {
-      row.classList.add('grouped');
-      if (shipIdx === g[0]) row.classList.add('group-head');
-      if (shipIdx === g[g.length - 1]) row.classList.add('group-tail');
+  order.forEach((ship, pos) => {
+    // 区切りに付けるブロック番号はグループ内のものだけ。
+    // ブロックをまたぐ区切りはドラッグ中に位置が変わらないので、印を付けずに除外する
+    if (pos > 0 && !verify) {
+      shipList.append(divider(pos - 1, state.merged[pos - 1] ? blockOfRow[pos] : null));
     }
-
-    row.append(verify ? rankCell(i, [i]) : rankCell(i, g));
-    row.addEventListener('pointerdown', (e) => onRowPointerDown(e, i, row));
-
-    const name = document.createElement('input');
-    name.type = 'text';
-    name.value = ship.name;
-    name.addEventListener('input', () => {
-      ship.name = name.value;
-      refreshResults();
-    });
-    row.append(name);
-
-    row.append(
-      selectEl(
-        RANGE_ORDER.map((r) => [String(r), `${RANGE_LABEL[r]} (${r})`] as Option<string>),
-        String(ship.range),
-        (v) => {
-          ship.range = Number(v);
-          refreshResults();
-        },
-      ),
+    shipList.append(
+      shipRow({ ship, pos, group: groupOfRank[ship], block: blockOfRow[pos], blockCount: blocks.length }),
     );
-
-    // 不参加(潜水艦・攻撃機を積んでいない空母)は行動順リストに載らず、後続が繰り上がる
-    row.append(
-      selectEl(
-        [
-          ['yes', '参加'],
-          ['no', '不参加'],
-        ] as const,
-        ship.shells ? 'yes' : 'no',
-        (v) => {
-          ship.shells = v === 'yes';
-          refreshAll();
-        },
-      ),
-    );
-
-    // 並びが確定している確認モードでは、位置指定と優先度は意味を持たない
-    if (verify) {
-      row.append(unusedCell(), unusedCell());
-    } else {
-      // その隻数で使えない指定(6隻での「7番艦」、3隻での警戒陣、5隻でのタッチ など)は出さない
-      const n = state.ships.length;
-      const usable = CONSTRAINTS.filter((c) => isConstraintAvailable(c, n));
-      if (!usable.includes(ship.constraint)) ship.constraint = 'any';
-      row.append(
-        selectEl(
-          usable.map((c) => [c, constraintLabel(c, n)] as Option<PosConstraint>),
-          ship.constraint,
-          (v) => {
-            ship.constraint = v;
-            refreshResults();
-          },
-        ),
-        priorityCell(ship, shipIdx, g),
-      );
-    }
-
-    row.append(
-      iconButton('↑', i === 0, () => move(i, -1)),
-      iconButton('↓', i === order.length - 1, () => move(i, 1)),
-      iconButton('✕', state.ships.length <= 2, () => {
-        state.ships.splice(shipIdx, 1);
-        state.merged.splice(Math.max(0, shipIdx - 1), 1);
-        // 確認モードの並びは添字がずれるだけなので詰め直す
-        verifyOrder = verifyOrder?.filter((i) => i !== shipIdx).map((i) => (i > shipIdx ? i - 1 : i)) ?? null;
-        refreshAll();
-      }),
-    );
-    shipList.append(row);
   });
 
   byId<HTMLButtonElement>('add-ship').disabled = state.ships.length >= MAX_SHIPS;
+}
+
+/** 艦1隻ぶんの行。列は必ず9つ(スマホの2段折り返しがこの並びを前提にしている) */
+function shipRow(r: Row): HTMLDivElement {
+  const row = document.createElement('div');
+  row.className = 'ship-row';
+  row.dataset.block = String(r.block);
+  if (!verify && r.group.length >= 2) {
+    row.classList.add('grouped');
+    if (isGroupHead(r)) row.classList.add('group-head');
+    if (r.ship === r.group[r.group.length - 1]) row.classList.add('group-tail');
+  }
+  row.addEventListener('pointerdown', (e) => onRowPointerDown(e, r.block, row));
+
+  row.append(
+    verify ? rankCell(r.pos, [r.pos]) : rankCell(r.pos, r.group),
+    nameCell(r),
+    rangeCell(r),
+    shellsCell(r),
+    // 並びが確定している確認モードでは、位置指定と優先度は意味を持たない
+    ...(verify ? [unusedCell(), unusedCell()] : [constraintCell(r), priorityCell(r)]),
+    ...moveButtons(r),
+    deleteButton(r),
+  );
+  return row;
+}
+
+function isGroupHead(r: Row): boolean {
+  return r.ship === r.group[0];
+}
+
+/**
+ * 射程と砲撃戦参加を一緒に書き換える艦。
+ * 順不同グループは値が揃っていないと均等に撃てないので共有する。
+ * ただし確認モードはグループの帯が見えず、離れた行が理由なく変わって見えるのでその艦だけにする。
+ */
+function linkedShips(r: Row): number[] {
+  return verify ? [r.ship] : r.group;
+}
+
+/**
+ * グループ内で値が揃っているか。揃っていれば先頭行にだけ出し、2隻目以降は「〃」にして
+ * 共有していることを見て分かるようにする。揃っていないグループでこれをやると
+ * 差が見えなくなるので、そのときは全行に出す。
+ */
+function followsHead(r: Row, pick: (s: Ship) => number | boolean): boolean {
+  if (verify || r.group.length < 2 || isGroupHead(r)) return false;
+  const head = pick(state.ships[r.group[0]]);
+  return r.group.every((rank) => pick(state.ships[rank]) === head);
+}
+
+/** 確率に影響しない覚え書き。名前を打ち替えただけなら探索は回らない */
+function nameCell(r: Row): HTMLInputElement {
+  const ship = state.ships[r.ship];
+  const el = document.createElement('input');
+  el.type = 'text';
+  el.value = ship.name;
+  el.addEventListener('input', () => {
+    ship.name = el.value;
+    refreshResults();
+  });
+  return el;
+}
+
+/** 射程が違う艦は必ず先に撃つので、グループでは射程を揃える */
+function rangeCell(r: Row): HTMLElement {
+  if (followsHead(r, (s) => s.range)) return dittoCell('グループの射程に従う');
+  const linked = linkedShips(r);
+  return selectEl(
+    RANGE_ORDER.map((v) => [String(v), `${RANGE_LABEL[v]} (${v})`] as Option<string>),
+    String(state.ships[r.ship].range),
+    (v) => {
+      for (const rank of linked) state.ships[rank].range = Number(v);
+      // グループなら他の行の表示も連動するので、行から作り直す
+      if (linked.length >= 2) refreshAll();
+      else refreshResults();
+    },
+  );
+}
+
+/** 不参加(潜水艦・攻撃機を積んでいない空母)は行動順リストに載らず、後続が繰り上がる */
+function shellsCell(r: Row): HTMLElement {
+  if (followsHead(r, (s) => s.shells)) return dittoCell('グループの砲撃戦参加に従う');
+  const linked = linkedShips(r);
+  return selectEl(
+    [
+      ['yes', '参加'],
+      ['no', '不参加'],
+    ] as const,
+    state.ships[r.ship].shells ? 'yes' : 'no',
+    (v) => {
+      for (const rank of linked) state.ships[rank].shells = v === 'yes';
+      refreshAll();
+    },
+  );
+}
+
+/** その隻数で使えない指定(6隻での「7番艦」、3隻での警戒陣、5隻でのタッチ など)は出さない */
+function constraintCell(r: Row): HTMLElement {
+  const ship = state.ships[r.ship];
+  const n = state.ships.length;
+  const usable = CONSTRAINTS.filter((c) => isConstraintAvailable(c, n));
+  if (!usable.includes(ship.constraint)) ship.constraint = 'any';
+  return selectEl(
+    usable.map((c) => [c, constraintLabel(c, n)] as Option<PosConstraint>),
+    ship.constraint,
+    (v) => {
+      ship.constraint = v;
+      refreshResults();
+    },
+  );
+}
+
+/**
+ * ↑↓ はブロック単位の操作なので、グループでは先頭行にだけ置く。
+ * 2隻目以降にも並べると「その艦だけ動く」ように読めてしまう(ドラッグはどの行からでもできる)
+ */
+function moveButtons(r: Row): HTMLElement[] {
+  if (!verify && r.group.length >= 2 && !isGroupHead(r)) return [blankCell(), blankCell()];
+  return [
+    iconButton('↑', r.block === 0, () => moveBlockTo(r.block, r.block - 1)),
+    iconButton('↓', r.block === r.blockCount - 1, () => moveBlockTo(r.block, r.block + 1)),
+  ];
+}
+
+function deleteButton(r: Row): HTMLButtonElement {
+  return iconButton('✕', state.ships.length <= 2, () => {
+    const gone = r.ship;
+    state.ships.splice(gone, 1);
+    state.merged.splice(Math.max(0, gone - 1), 1);
+    // 確認モードの並びは添字がずれるだけなので詰め直す
+    verifyOrder = verifyOrder?.filter((i) => i !== gone).map((i) => (i > gone ? i - 1 : i)) ?? null;
+    refreshAll();
+  });
 }
 
 /** 確認モードでの艦隊の並び順。初回は最良候補を読み込む */
@@ -275,6 +352,22 @@ function fleetOrder(): number[] {
     verifyOrder = results[0] ? [...results[0].assign] : state.ships.map((_, i) => i);
   }
   return verifyOrder;
+}
+
+/** グループの先頭行に従うことを示すセル */
+function dittoCell(title: string): HTMLElement {
+  const el = document.createElement('div');
+  el.className = 'ditto';
+  el.textContent = '〃';
+  el.title = title;
+  return el;
+}
+
+/** ボタンを置かない枠。列の幅を保って ✕ の位置を揃える */
+function blankCell(): HTMLElement {
+  const el = document.createElement('div');
+  el.className = 'blank';
+  return el;
 }
 
 /** そのモードでは使わない項目 */
@@ -318,32 +411,27 @@ function rankCell(i: number, g: number[]): HTMLDivElement {
   return cell;
 }
 
-/** 優先度はグループ単位。2隻目以降は先頭に従うので「〃」を出す */
-function priorityCell(ship: Ship, i: number, g: number[]): HTMLElement {
-  if (g.length >= 2 && i !== g[0]) {
-    const ditto = document.createElement('div');
-    ditto.className = 'ditto';
-    ditto.textContent = '〃';
-    ditto.title = 'グループの優先度に従う';
-    return ditto;
-  }
+/** 優先度は値が揃っているかによらず常にグループ単位。2隻目以降は「〃」を出す */
+function priorityCell(r: Row): HTMLElement {
+  if (r.group.length >= 2 && !isGroupHead(r)) return dittoCell('グループの優先度に従う');
   const prio = selectEl(
     PRIORITIES.map((p) => [p, PRIORITY_LABEL[p]] as Option<Priority>),
-    ship.priority,
+    state.ships[r.ship].priority,
     (v) => {
-      for (const rank of g) state.ships[rank].priority = v;
+      for (const rank of r.group) state.ships[rank].priority = v;
       refreshAll();
     },
   );
   // 砲撃しない艦しかいないグループでは優先度が効かない
-  prio.disabled = !g.some((rank) => state.ships[rank].shells);
+  prio.disabled = !r.group.some((rank) => state.ships[rank].shells);
   return prio;
 }
 
-/** 行と行の間の区切り。クリックで「順不同グループ」に束ねる */
-function divider(gap: number): HTMLElement {
+/** 行と行の間の区切り。クリックで「順不同グループ」に束ねる。block はグループ内の区切りだけ持つ */
+function divider(gap: number, block: number | null): HTMLElement {
   const el = document.createElement('button');
   el.type = 'button';
+  if (block !== null) el.dataset.block = String(block);
   el.className = state.merged[gap] ? 'divider merged' : 'divider';
   el.title = state.merged[gap] ? 'グループを分ける' : '上下の艦を順不同グループにまとめる';
   const label = document.createElement('span');
@@ -356,19 +444,31 @@ function divider(gap: number): HTMLElement {
   return el;
 }
 
-function move(i: number, d: number): void {
-  const list: unknown[] = verify ? fleetOrder() : state.ships;
-  const j = i + d;
-  if (j < 0 || j >= list.length) return;
-  [list[i], list[j]] = [list[j], list[i]];
-  refreshAll();
+/**
+ * 並べ替えの単位。順不同グループは内部の順序に意味が無いので、1ブロックとして扱う。
+ * 返すのは行番号の配列の配列で、確認モードでは全行が単独のブロックになる。
+ */
+function dragBlocks(): number[][] {
+  const n = state.ships.length;
+  if (verify) return Array.from({ length: n }, (_, i) => [i]);
+  return groupsFromMerged(state.merged, n);
 }
 
-/** ドラッグやボタンでの並べ替えを確定する。確認モードは艦隊の並びだけを動かす */
-function moveTo(from: number, to: number): void {
+/**
+ * 並べ替えを確定する。順不同グループは中身と区切りごと移動する。
+ * 確認モードは艦隊の並びだけを動かす(グループを持たないので1隻ずつ)
+ */
+function moveBlockTo(fromB: number, toB: number): void {
+  const blocks = dragBlocks();
+  if (toB < 0 || toB >= blocks.length || toB === fromB) return;
+
   const list: unknown[] = verify ? fleetOrder() : state.ships;
-  const [moved] = list.splice(from, 1);
-  list.splice(to, 0, moved);
+  const chunks = blocks.map((b) => b.map((i) => list[i]));
+  const [moved] = chunks.splice(fromB, 1);
+  chunks.splice(toB, 0, moved);
+  chunks.flat().forEach((v, i) => (list[i] = v));
+
+  if (!verify) state.merged = mergedFromGroups(chunks);
   refreshAll();
 }
 
@@ -379,11 +479,14 @@ const MOVE_TOLERANCE = 8;
 
 interface Drag {
   pointerId: number;
-  from: number;
-  to: number;
-  row: HTMLElement;
-  rows: HTMLElement[];
-  rowH: number;
+  fromB: number;
+  toB: number;
+  /** 持ち上げる要素(掴んだブロックの行と、その内側の区切り) */
+  moving: HTMLElement[];
+  /** 隙間を空けるために動かす要素と、それが属するブロック番号 */
+  others: { el: HTMLElement; block: number }[];
+  /** 各ブロックが流れの中で占める高さ(区切り1本ぶんを含む) */
+  outer: number[];
   startY: number;
 }
 
@@ -418,14 +521,32 @@ function onRowPointerDown(e: PointerEvent, index: number, row: HTMLElement): voi
   window.addEventListener('pointercancel', cancel);
 }
 
-function beginDrag(pointerId: number, index: number, row: HTMLElement, startY: number): void {
+/** 各ブロックが流れの中で占める高さ。ブロックの間隔は区切り1本ぶんで一定なので先頭2つから測る */
+function blockHeights(blocks: number[][]): number[] {
   const rows = [...shipList.querySelectorAll<HTMLElement>('.ship-row')];
-  if (rows.length < 2) return;
-  const rowH = rows[1].getBoundingClientRect().top - rows[0].getBoundingClientRect().top;
+  const top = (b: number[]): number => rows[b[0]].getBoundingClientRect().top;
+  const bottom = (b: number[]): number => rows[b[b.length - 1]].getBoundingClientRect().bottom;
+  const gap = top(blocks[1]) - bottom(blocks[0]);
+  return blocks.map((b) => bottom(b) - top(b) + gap);
+}
 
-  drag = { pointerId, from: index, to: index, row, rows, rowH, startY };
+function beginDrag(pointerId: number, fromB: number, row: HTMLElement, startY: number): void {
+  const blocks = dragBlocks();
+  if (blocks.length < 2) return;
+
+  // ブロック番号は描画時に data-block で振ってある。持たない要素(ブロックをまたぐ
+  // 区切り)は位置が変わらないので触らない
+  const moving: HTMLElement[] = [];
+  const others: { el: HTMLElement; block: number }[] = [];
+  for (const el of shipList.querySelectorAll<HTMLElement>('[data-block]')) {
+    const block = Number(el.dataset.block);
+    if (block === fromB) moving.push(el);
+    else others.push({ el, block });
+  }
+
+  drag = { pointerId, fromB, toB: fromB, moving, others, outer: blockHeights(blocks), startY };
   document.body.classList.add('dragging');
-  row.classList.add('lift');
+  for (const el of moving) el.classList.add('lift');
   try {
     row.setPointerCapture(pointerId);
   } catch {
@@ -441,23 +562,38 @@ function beginDrag(pointerId: number, index: number, row: HTMLElement, startY: n
 
 function onDragMove(e: PointerEvent): void {
   if (!drag || e.pointerId !== drag.pointerId) return;
+  const { fromB, outer } = drag;
   const dy = e.clientY - drag.startY;
-  drag.row.style.transform = `translateY(${dy}px)`;
-  drag.to = clamp(drag.from + Math.round(dy / drag.rowH), 0, drag.rows.length - 1);
+  for (const el of drag.moving) el.style.transform = `translateY(${dy}px)`;
+  const toB = dropTarget(outer, fromB, dy);
+  drag.toB = toB;
 
-  // 持ち上げた行が入る隙間を空ける
-  drag.rows.forEach((el, j) => {
-    if (j === drag!.from) return;
-    let shift = 0;
-    if (drag!.from < drag!.to && j > drag!.from && j <= drag!.to) shift = -drag!.rowH;
-    if (drag!.to < drag!.from && j >= drag!.to && j < drag!.from) shift = drag!.rowH;
-    el.style.transform = shift ? `translateY(${shift}px)` : '';
-  });
+  // 追い越されたブロックを、空ける隙間のぶんだけ逆向きにずらす
+  const lo = Math.min(fromB, toB);
+  const hi = Math.max(fromB, toB);
+  const shift = (toB > fromB ? -1 : 1) * outer[fromB];
+  for (const o of drag.others) {
+    const shifted = o.block >= lo && o.block <= hi;
+    o.el.style.transform = shifted ? `translateY(${shift}px)` : '';
+  }
+}
+
+/** ブロックの高さがまちまちなので、隣のブロックを半分ぶん過ぎたところで入れ替わりを確定する */
+function dropTarget(outer: number[], fromB: number, dy: number): number {
+  const step = dy > 0 ? 1 : -1;
+  let to = fromB;
+  let acc = 0;
+  for (let b = fromB + step; b >= 0 && b < outer.length; b += step) {
+    acc += outer[b];
+    if (Math.abs(dy) <= acc - outer[b] / 2) break;
+    to = b;
+  }
+  return to;
 }
 
 function endDrag(e: PointerEvent): void {
   if (!drag || e.pointerId !== drag.pointerId) return;
-  const { from, to, row, rows } = drag;
+  const { fromB, toB, moving, others } = drag;
   drag = null;
 
   window.removeEventListener('pointermove', onDragMove);
@@ -466,18 +602,17 @@ function endDrag(e: PointerEvent): void {
   window.removeEventListener('contextmenu', suppressContextMenu);
 
   document.body.classList.remove('dragging');
-  row.classList.remove('lift');
-  for (const el of rows) el.style.transform = '';
+  for (const el of moving) {
+    el.classList.remove('lift');
+    el.style.transform = '';
+  }
+  for (const o of others) o.el.style.transform = '';
 
-  if (from !== to) moveTo(from, to);
+  if (fromB !== toB) moveBlockTo(fromB, toB);
 }
 
 function suppressContextMenu(e: Event): void {
   e.preventDefault();
-}
-
-function clamp(v: number, lo: number, hi: number): number {
-  return v < lo ? lo : v > hi ? hi : v;
 }
 
 /* ---- 汎用の DOM ヘルパー ----------------------------------------------- */
@@ -551,11 +686,13 @@ function renderResults(): void {
   }
 
   if (verify) {
-    // 並びが決まっているので順位付けは行わず、その並びの砲撃順だけを出す
+    // 並びが決まっているので順位付けは行わず、その並びの砲撃順だけを出す。
+    // 順不同グループは希望順に紐づく概念なので、確認モードでは全艦を単艦扱いにする
+    const solo = state.ships.map((_, i) => [i]);
     warnBox.hidden = warnings.length === 0;
     warnBox.textContent = warnings.join('\n');
     summary.textContent = '';
-    renderDetail(makeEvaluator(state.ships, groups, TIE_MODE)(fleetOrder()), groups);
+    renderDetail(makeEvaluator(state.ships, solo, TIE_MODE)(fleetOrder()), solo);
     return;
   }
 
